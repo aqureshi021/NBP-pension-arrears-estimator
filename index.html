@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NBP Pension Arrears Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F7F4; --card:#FFFFFF; --ink:#1B2A24; --muted:#5C6B64; --rule:#D3DBD5;
+  --green:#14543F; --green-soft:#E3EEE8; --brass:#9A7420; --brass-soft:#F4ECD8; --warn:#A23B2A; --warn-soft:#F7E6E2;
+  --field:#FFFFFF; --focus:#1F7A5A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101714; --card:#17211D; --ink:#E4ECE7; --muted:#9AABA2; --rule:#2B3A33;
+    --green:#6FC4A0; --green-soft:#1C2F27; --brass:#D9B45E; --brass-soft:#2C2616; --warn:#E88C7B; --warn-soft:#33201C;
+    --field:#0F1613; --focus:#6FC4A0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101714; --card:#17211D; --ink:#E4ECE7; --muted:#9AABA2; --rule:#2B3A33;
+  --green:#6FC4A0; --green-soft:#1C2F27; --brass:#D9B45E; --brass-soft:#2C2616; --warn:#E88C7B; --warn-soft:#33201C;
+  --field:#0F1613; --focus:#6FC4A0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.55 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1160px;margin:0 auto;padding:28px 20px 60px}
+header{border-bottom:2px solid var(--green);padding-bottom:18px;margin-bottom:28px}
+h1{font:700 clamp(1.7rem,3.4vw,2.35rem)/1.15 "Source Serif 4",Georgia,serif;margin:0 0 8px;color:var(--green);letter-spacing:-.01em}
+.lede{margin:0;color:var(--muted);max-width:68ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:28px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:1fr}}
+section.panel{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:22px}
+h2{font:600 1.25rem/1.3 "Source Serif 4",Georgia,serif;margin:0 0 16px}
+h3{font:600 1.02rem/1.3 "Public Sans",sans-serif;margin:0 0 10px}
+.field{margin-bottom:18px}
+.field label,.fieldset-label{display:block;font-weight:600;margin-bottom:6px}
+.hint{display:block;font-size:.86rem;color:var(--muted);margin-top:5px}
+input[type=date],input[type=number],select{width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:6px;padding:10px 12px;min-height:44px}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.seg label{flex:1;margin:0;font-weight:500;text-align:center;cursor:pointer;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:10px 8px;min-height:44px;line-height:24px}
+.seg label+label span{border-left:1px solid var(--rule)}
+.seg input:checked+span{background:var(--green);color:var(--card);font-weight:600}
+.seg input:focus-visible+span{outline:3px solid var(--focus);outline-offset:-3px}
+.check{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
+.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--green);flex:none}
+.check label{font-weight:500}
+.death-box{border-left:3px solid var(--brass);padding-left:14px;margin:-4px 0 18px}
+.reverse{background:var(--green-soft);border-radius:8px;padding:14px 16px;margin-top:6px}
+.reverse strong{font:600 1.2rem "Source Serif 4",Georgia,serif;color:var(--green)}
+.err{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-weight:500}
+.results{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}
+@media (max-width:880px){.results{position:static}}
+.figure{padding:18px 0;border-bottom:1px solid var(--rule)}
+.figure:first-of-type{padding-top:4px}
+.figure .label{font-weight:600;color:var(--muted);font-size:.95rem}
+.figure .amount{font:700 clamp(2rem,5vw,2.9rem)/1.1 "Source Serif 4",Georgia,serif;font-variant-numeric:tabular-nums lining-nums;margin:6px 0 4px;letter-spacing:-.015em}
+.figure.arrears .amount{color:var(--brass)}
+.figure.pension .amount{color:var(--green)}
+.figure .sub{color:var(--muted);font-size:.93rem}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.split div{background:var(--brass-soft);border-radius:8px;padding:10px 12px;font-size:.9rem}
+.split b{display:block;font:600 1.1rem "Source Serif 4",Georgia,serif;font-variant-numeric:tabular-nums;color:var(--ink)}
+.compare{margin-top:16px;font-size:.92rem;color:var(--muted);background:var(--paper);border-radius:8px;padding:12px 14px}
+.compare b{color:var(--ink);font-variant-numeric:tabular-nums}
+.note{font-size:.86rem;color:var(--muted);margin:14px 0 0}
+details{margin-top:28px;background:var(--card);border:1px solid var(--rule);border-radius:10px}
+summary{cursor:pointer;padding:16px 22px;font:600 1.1rem "Source Serif 4",Georgia,serif;list-style-position:inside}
+.details-body{padding:0 22px 22px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.93rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:.85rem;background:var(--paper)}
+td.num,th.num{text-align:right}
+tfoot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:none}
+.rates input,.rates select{min-height:38px;padding:6px 8px;font-size:.9rem}
+.rates input[type=number]{width:84px}
+.rates input[type=date]{width:150px}
+.rates select{width:170px}
+.rates td{vertical-align:middle}
+.flag{display:inline-block;font-size:.78rem;padding:2px 8px;border-radius:20px;font-weight:600}
+.flag.ok{background:var(--green-soft);color:var(--green)}
+.flag.chk{background:var(--warn-soft);color:var(--warn)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{font:600 .95rem "Public Sans",sans-serif;border-radius:6px;padding:10px 16px;min-height:42px;cursor:pointer;border:1px solid var(--green);background:var(--card);color:var(--green)}
+button.primary{background:var(--green);color:var(--card)}
+button.del{border-color:var(--rule);color:var(--muted);padding:6px 10px;min-height:34px}
+.rowmuted td{color:var(--muted)}
+footer{margin-top:30px;font-size:.86rem;color:var(--muted);max-width:80ch}
+@media (prefers-reduced-motion:no-preference){.amount{transition:color .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>NBP pension arrears estimator</h1>
+    <p class="lede">Estimate what an NBP pensioner is owed under the Federal Constitutional Court's 16 September 2026 ruling in <em>NBP vs. Khawaja Abdul Hameed Nasir</em> (C.A. No. 1688/2021). That case is about periodical <strong>government pension increases NBP did not pass on</strong> after retirement — it is separate from the older 70%-vs-33% pension-factor case, which is already settled. This tool compares what the federal government announced each year against what the pensioner actually received, from the retirement date onward.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="in-h">
+      <h2 id="in-h">Pensioner details</h2>
+      <div id="errors" role="alert"></div>
+
+      <div class="field">
+        <label for="retDate">Date of retirement</label>
+        <input type="date" id="retDate" value="2017-06-30" min="1990-01-01">
+      </div>
+
+      <div class="field">
+        <label for="retPension">Monthly pension at the time of retirement (Rs)</label>
+        <input type="number" id="retPension" value="40000" min="0" step="100" inputmode="decimal">
+        <span class="hint">Net pension drawn in the first month, without medical allowance.</span>
+      </div>
+
+      <div class="field">
+        <span class="fieldset-label" id="cat-l">Staff category at retirement</span>
+        <div class="seg" role="radiogroup" aria-labelledby="cat-l">
+          <label><input type="radio" name="cat" value="officer" checked><span>Officer / Executive</span></label>
+          <label><input type="radio" name="cat" value="clerical"><span>Clerical / Non-clerical</span></label>
+        </div>
+        <span class="hint">Used only for years where the increase rate differed by staff category.</span>
+      </div>
+
+      <div class="field">
+        <span class="fieldset-label" id="st-l">Pensioner status</span>
+        <div class="seg" role="radiogroup" aria-labelledby="st-l">
+          <label><input type="radio" name="status" value="alive"><span>Alive</span></label>
+          <label><input type="radio" name="status" value="deceased" checked><span>Deceased</span></label>
+        </div>
+      </div>
+
+      <div class="death-box" id="deathBox">
+        <div class="field">
+          <label for="deathDate">Date of death</label>
+          <input type="date" id="deathDate" value="2020-06-30">
+        </div>
+        <div class="field">
+          <label for="familyPct">Family pension after death (% of pension)</label>
+          <input type="number" id="familyPct" value="50" min="0" max="100" step="1" inputmode="decimal">
+          <span class="hint">Enter the actual rate NBP applied to this family (commonly 50% or 75% depending on the rules in force). You said 50% for this case.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="currentPension">Monthly pension being received now (Rs, optional)</label>
+        <input type="number" id="currentPension" min="0" step="100" inputmode="decimal" placeholder="Leave blank if unchanged since retirement">
+        <span class="hint">If NBP gave its own increases, enter today's amount (family pension if deceased). The calculator subtracts what was already paid.</span>
+      </div>
+
+      <div class="field">
+        <label for="calcUntil">Calculate arrears up to</label>
+        <input type="date" id="calcUntil">
+      </div>
+
+      <div class="reverse" id="reverse" aria-live="polite"></div>
+    </section>
+
+    <section class="panel results" aria-labelledby="out-h" aria-live="polite">
+      <h2 id="out-h">Estimate</h2>
+      <div class="figure arrears">
+        <div class="label">Total arrears (one-time)</div>
+        <div class="amount" id="outArrears">–</div>
+        <div class="sub" id="outArrearsSub"></div>
+        <div class="split" id="deathSplit" hidden>
+          <div>Retirement to death<br><b id="outPre">–</b>Shared among legal heirs</div>
+          <div>After death, as family pension<br><b id="outPost">–</b>To widow / dependents</div>
+        </div>
+      </div>
+      <div class="figure pension">
+        <div class="label" id="outPensionLabel">Revised monthly pension</div>
+        <div class="amount" id="outPension">–</div>
+        <div class="sub" id="outPensionSub"></div>
+      </div>
+      <p class="note">No markup or interest is included. Tax, commutation and medical allowance are ignored.</p>
+    </section>
+  </div>
+
+  <details id="ledgerBox">
+    <summary>Year-by-year breakdown</summary>
+    <div class="details-body">
+      <div class="scroll"><table id="ledger"></table></div>
+    </div>
+  </details>
+
+  <details id="ratesBox">
+    <summary>Government increase rates used</summary>
+    <div class="details-body">
+      <p class="note" style="margin-top:0">Edit any rate, effective date or condition and the estimate updates instantly. Rows marked "Check" came from your list and could not be confirmed against a Finance Division notification. For split years, choose who gets the special rate: clerical staff, or pensioners who retired before / on or after a cut-off date.</p>
+      <div class="scroll"><table class="rates" id="rates"></table></div>
+      <div class="btns">
+        <button type="button" id="addRow">Add increase</button>
+        <button type="button" id="resetRows">Reset to default rates</button>
+      </div>
+    </div>
+  </details>
+
+  <footer>
+    Sources: Finance Division pension increase notifications (2022, 2026), federal budget announcements, and NBP's PSX disclosure of 17 September 2026. This tool is an unofficial estimate and not legal or financial advice. Actual amounts will depend on the detailed judgment and how NBP implements it.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const DEFAULT_RATES = [
+    {d:'2001-07-01', r:5,  s:10, c:'clerical', v:false, n:'Split rate from your list'},
+    {d:'2004-07-01', r:8,  s:16, c:'clerical', v:false, n:'Split rate from your list'},
+    {d:'2005-07-01', r:10, v:false},
+    {d:'2006-07-01', r:15, v:false},
+    {d:'2007-07-01', r:15, v:false},
+    {d:'2008-07-01', r:20, v:false},
+    {d:'2009-07-01', r:15, s:20, c:'clerical', v:false, n:'15% confirmed; 20% condition unclear'},
+    {d:'2010-07-01', r:15, s:20, c:'clerical', v:false, n:'Split rate from your list'},
+    {d:'2011-07-01', r:15, v:true},
+    {d:'2012-07-01', r:20, v:false},
+    {d:'2013-07-01', r:10, v:false},
+    {d:'2014-07-01', r:10, v:false},
+    {d:'2015-07-01', r:7.5, v:true},
+    {d:'2016-07-01', r:10, v:true},
+    {d:'2017-07-01', r:10, v:true},
+    {d:'2018-07-01', r:10, v:true},
+    {d:'2019-07-01', r:10, v:true},
+    {d:'2021-07-01', r:10, v:true},
+    {d:'2022-04-14', r:10, v:true, n:'10% from 14 April 2022'},
+    {d:'2022-07-01', r:4.5455, v:true, n:'Raises the 10% to 15% total (1.15 ÷ 1.10)'},
+    {d:'2023-07-01', r:17.5, v:true},
+    {d:'2024-07-01', r:15, v:true},
+    {d:'2025-07-01', r:7, v:true},
+    {d:'2026-07-01', r:7, v:true}
+  ];
+  let rates = clone(DEFAULT_RATES);
+  function clone(a){return a.map(x=>({d:x.d,r:x.r,s:x.s??'',c:x.c||'none',cut:x.cut||'',v:!!x.v,n:x.n||''}));}
+
+  const $ = id => document.getElementById(id);
+  const today = new Date();
+  $('calcUntil').value = toISO(new Date(today.getFullYear(), today.getMonth()+1, 0));
+
+  function toISO(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+  function parseD(s){if(!s)return null;const [y,m,d]=s.split('-').map(Number);if(!y||!m||!d)return null;return new Date(y,m-1,d);}
+  const mIdx = d => d.getFullYear()*12 + d.getMonth();
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmt = n => 'Rs ' + Math.round(n).toLocaleString('en-US');
+  function lakh(n){
+    if(n>=1e7) return '≈ ' + (n/1e7).toFixed(2) + ' crore';
+    if(n>=1e5) return '≈ ' + (n/1e5).toFixed(2) + ' lakh';
+    return '';
+  }
+  function effMonth(dateStr){
+    const d=parseD(dateStr); if(!d) return null;
+    return mIdx(d) + (d.getDate()>1 ? 1 : 0);
+  }
+
+  function rateFor(row, ctx){
+    const r = Number(row.r)||0;
+    const s = row.s===''||row.s==null ? null : Number(row.s);
+    if(s==null || row.c==='none') return r;
+    if(row.c==='clerical') return ctx.category==='clerical' ? s : r;
+    const cut = parseD(row.cut); if(!cut) return r;
+    if(row.c==='before') return ctx.retDate < cut ? s : r;
+    if(row.c==='onafter') return ctx.retDate >= cut ? s : r;
+    return r;
+  }
+
+  function compute(inp, preAdjust){
+    const startDate = new Date(inp.retDate.getTime()); startDate.setDate(startDate.getDate()+1);
+    const startMI = mIdx(startDate);
+    const floorMI = 1999*12;
+    const arrStart = Math.max(startMI, floorMI);
+    const endMI = mIdx(inp.calcUntil);
+    const deathMI = inp.deceased ? mIdx(inp.deathDate) : Infinity;
+    const fam = inp.familyPct/100;
+
+    const rows = rates.map(r=>({em:effMonth(r.d), date:parseD(r.d), rate:rateFor(r,inp)/100}))
+      .filter(r=>r.em!=null).sort((a,b)=>a.em-b.em);
+
+    let preFactor = 1;
+    if(preAdjust){ rows.forEach(r=>{ if(r.em>=floorMI && r.em<startMI) preFactor *= (1+r.rate); }); }
+    const base0 = inp.retPension * preFactor;
+
+    // actual paid path
+    let g = 0;
+    const years = (endMI - startMI)/12;
+    if(inp.currentPension>0 && years>0){
+      const fEnd = endMI>deathMI ? fam : 1;
+      const denom = inp.retPension * fEnd;
+      if(denom>0) g = Math.pow(inp.currentPension/denom, 1/years) - 1;
+    }
+
+    const baselineCut = mIdx(new Date(2025,0,1));
+    let value = base0, baselineVal = null, ptr = 0;
+    while(ptr<rows.length && rows[ptr].em < startMI) ptr++;
+    // entitled value before arrears window (for pre-1999 retirees we just start at base0)
+    const ledger = {}; let total=0, pre=0, post=0, lastEnt=base0, lastAct=inp.retPension;
+    for(let mi=startMI; mi<=endMI; mi++){
+      while(ptr<rows.length && rows[ptr].em<=mi){
+        const r=rows[ptr];
+        if(inp.baseline && r.em>=baselineCut){
+          if(baselineVal==null) baselineVal=value;
+          value += baselineVal*r.rate;
+        } else value *= (1+r.rate);
+        ptr++;
+      }
+      const f = mi>deathMI ? fam : 1;
+      const ent = value*f;
+      const act = inp.retPension*Math.pow(1+g,(mi-startMI)/12)*f;
+      lastEnt=ent; lastAct=act;
+      if(mi<arrStart) continue;
+      const diff = Math.max(0, ent-act);
+      total+=diff; if(mi>deathMI) post+=diff; else pre+=diff;
+      const y=Math.floor(mi/12);
+      if(!ledger[y]) ledger[y]={months:0,ent:0,act:0,arr:0};
+      ledger[y].months++; ledger[y].ent+=ent; ledger[y].act+=act; ledger[y].arr+=diff;
+    }
+    return {base0, preFactor, total, pre, post, newPension:lastEnt, actualNow:lastAct, ledger, endMI, deathMI, startMI};
+  }
+
+  function readInputs(){
+    const errs=[];
+    const retDate=parseD($('retDate').value);
+    const retPension=Number($('retPension').value);
+    const deceased=document.querySelector('input[name=status]:checked').value==='deceased';
+    const category=document.querySelector('input[name=cat]:checked').value;
+    const deathDate=parseD($('deathDate').value);
+    const familyPct=Number($('familyPct').value);
+    const currentPension=Number($('currentPension').value)||0;
+    const calcUntil=parseD($('calcUntil').value);
+    if(!retDate) errs.push('Enter the date of retirement.');
+    if(!(retPension>0)) errs.push('Enter the monthly pension at retirement.');
+    if(!calcUntil) errs.push('Enter the "calculate up to" date.');
+    if(retDate && calcUntil && calcUntil<=retDate) errs.push('The "calculate up to" date must be after retirement.');
+    if(deceased){
+      if(!deathDate) errs.push('Enter the date of death.');
+      else if(retDate && deathDate<retDate) errs.push('Date of death must be after the retirement date.');
+      if(!(familyPct>=0 && familyPct<=100)) errs.push('Family pension % must be between 0 and 100.');
+    }
+    return {errs, inp:{retDate,retPension,deceased,category,deathDate,familyPct:deceased?familyPct:100,currentPension,calcUntil,baseline:true}};
+  }
+
+  function render(){
+    $('deathBox').hidden = document.querySelector('input[name=status]:checked').value!=='deceased';
+    const {errs, inp} = readInputs();
+    const errBox=$('errors');
+    if(errs.length){
+      errBox.innerHTML='<div class="err">'+errs.join('<br>')+'</div>';
+      ['outArrears','outPension'].forEach(id=>$(id).textContent='–');
+      ['outArrearsSub','outPensionSub','reverse'].forEach(id=>$(id).innerHTML='');
+      $('deathSplit').hidden=true; $('ledger').innerHTML='';
+      return;
+    }
+    errBox.innerHTML='';
+    const pre = false;
+    const res = compute(inp, pre);
+
+    $('reverse').innerHTML='Starting pension: <strong>'+fmt(inp.retPension)+'</strong> from the retirement date. Government increases are counted from that date onward, per the 16 Sep 2026 ruling.';
+
+    const months = Object.values(res.ledger).reduce((a,b)=>a+b.months,0);
+    $('outArrears').textContent=fmt(res.total);
+    const endLbl = MONTHS[res.endMI%12]+' '+Math.floor(res.endMI/12);
+    $('outArrearsSub').textContent=(lakh(res.total)?lakh(res.total)+', ':'')+'over '+months+' months up to '+endLbl+'.';
+
+    const deadByEnd = inp.deceased && res.endMI>res.deathMI;
+    $('deathSplit').hidden = !inp.deceased;
+    if(inp.deceased){ $('outPre').textContent=fmt(res.pre); $('outPost').textContent=fmt(res.post); }
+
+    $('outPensionLabel').textContent = deadByEnd ? 'Revised monthly family pension' : 'Revised monthly pension';
+    $('outPension').textContent=fmt(res.newPension);
+    const inc = res.newPension-res.actualNow;
+    $('outPensionSub').textContent='Currently '+fmt(res.actualNow)+', so about '+fmt(Math.max(0,inc))+' more each month.';
+
+    // ledger
+    let h='<thead><tr><th>Year</th><th class="num">Months</th><th class="num">Should have received</th><th class="num">Actually received</th><th class="num">Arrears</th></tr></thead><tbody>';
+    let tE=0,tA=0,tR=0;
+    Object.keys(res.ledger).sort().forEach(y=>{
+      const L=res.ledger[y]; tE+=L.ent; tA+=L.act; tR+=L.arr;
+      h+='<tr><td>'+y+'</td><td class="num">'+L.months+'</td><td class="num">'+fmt(L.ent)+'</td><td class="num">'+fmt(L.act)+'</td><td class="num">'+fmt(L.arr)+'</td></tr>';
+    });
+    h+='</tbody><tfoot><tr><td>Total</td><td class="num">'+months+'</td><td class="num">'+fmt(tE)+'</td><td class="num">'+fmt(tA)+'</td><td class="num">'+fmt(tR)+'</td></tr></tfoot>';
+    $('ledger').innerHTML=h;
+  }
+
+  function renderRates(){
+    const opt=(v,l,c)=>'<option value="'+v+'"'+(c===v?' selected':'')+'>'+l+'</option>';
+    let h='<thead><tr><th>Effective date</th><th>Rate %</th><th>Special rate %</th><th>Special rate applies to</th><th>Cut-off date</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>';
+    rates.forEach((r,i)=>{
+      const needCut = r.c==='before'||r.c==='onafter';
+      h+='<tr data-i="'+i+'">'
+        +'<td><input type="date" data-k="d" value="'+r.d+'" aria-label="Effective date"></td>'
+        +'<td><input type="number" step="0.01" data-k="r" value="'+r.r+'" aria-label="Rate percent"></td>'
+        +'<td><input type="number" step="0.01" data-k="s" value="'+r.s+'" placeholder="–" aria-label="Special rate percent"></td>'
+        +'<td><select data-k="c" aria-label="Special rate condition">'+opt('none','Nobody',r.c)+opt('clerical','Clerical staff',r.c)+opt('before','Retired before cut-off',r.c)+opt('onafter','Retired on/after cut-off',r.c)+'</select></td>'
+        +'<td><input type="date" data-k="cut" value="'+r.cut+'" '+(needCut?'':'disabled')+' aria-label="Cut-off date"></td>'
+        +'<td>'+(r.v?'<span class="flag ok">Confirmed</span>':'<span class="flag chk">Check</span>')+'</td>'
+        +'<td style="white-space:normal;min-width:180px">'+(r.n||'')+'</td>'
+        +'<td><button type="button" class="del" data-del="'+i+'" aria-label="Remove row">Remove</button></td></tr>';
+    });
+    $('rates').innerHTML=h+'</tbody>';
+  }
+
+  $('rates').addEventListener('input',e=>{
+    const t=e.target, tr=t.closest('tr'); if(!tr||!t.dataset.k) return;
+    const r=rates[+tr.dataset.i]; r[t.dataset.k]=t.value; r.v=false;
+    if(t.dataset.k==='c'){ renderRates(); }
+    render();
+  });
+  $('rates').addEventListener('change',e=>{ if(e.target.dataset.k==='d'){ rates.sort((a,b)=>a.d.localeCompare(b.d)); renderRates(); render(); }});
+  $('rates').addEventListener('click',e=>{
+    const i=e.target.dataset.del; if(i==null) return;
+    rates.splice(+i,1); renderRates(); render();
+  });
+  $('addRow').addEventListener('click',()=>{ rates.push({d:toISO(today),r:0,s:'',c:'none',cut:'',v:false,n:'Added by you'}); rates.sort((a,b)=>a.d.localeCompare(b.d)); renderRates(); render(); });
+  $('resetRows').addEventListener('click',()=>{ rates=clone(DEFAULT_RATES); renderRates(); render(); });
+
+  document.querySelectorAll('input, select').forEach(el=>{
+    if(el.closest('#rates')) return;
+    el.addEventListener('input',render); el.addEventListener('change',render);
+  });
+
+  renderRates(); render();
+})();
+</script>
+</body>
+</html>
